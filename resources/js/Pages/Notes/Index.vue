@@ -1,79 +1,93 @@
 <template>
-<div style="padding: 16px" >
-    <h1>Notes</h1>
 
-    <!-- untuk search bar-->
-     <div style="margin: 16px 0;">
-        <input
-            v-model="q" 
-            type="text"
-            placeholder="Search judul..."
-            style="padding:8px; width: 320px;"
-        />
-
-     </div>
-
-    <form @submit.prevent="submit" style="margin: 16px 0">
-        <input
-            v-model="form.title"
-            type="text"
-            placeholder="Judul note..."
-            style="padding:8px; width: 320px;"
-        />
-        <button type="submit" style="margin-left:8px; padding:8px 12px;">
-            Tambah
-        </button>
-
-        <div v-if="form.errors.title" style="margin-top:8px;">
-            {{form.errors.title}}        
-        </div>
-    </form>
-<!-- Isi dari dalam tabel -->
-    <ul>
-        <li v-for="n in notes.data" :key="n.id" style="margin-bottom:10px;">
-            <!-- bagian edit dan hapus-->
-            <template v-if="editingId === n.id">
-                <input v-model="editForm.title" style="padding: 6px; width: 260px;">
-                <button @click="saveEdit(n.id)" style="margin-left: 6px; padding: 4px 8px;">Simpan</button>
-                <button @click="cancelEdit" style="margin-left: 6px; padding: 4px 8px;">Batal</button>
-
-                <div v-if="editForm.errors.title" style="margin-top: 6px;">
-                    {{ editForm.errors.title }}
-
+<v-container>
+    <v-card class="py-6">
+        <v-card-title class="text-h6">Notes</v-card-title>
+        <v-card-text>
+            <!-- Search bar -->
+             <v-text-field
+                v-model="q"
+                label="Search judul"
+                variant="outlined"
+                density="comfortable"
+                clearable
+             />
+            <!-- Formulir -->
+             <v-form @submit.prevent="submit">
+                <div class="d-flex ga-2 align-center">
+                    <v-text-field
+                        v-model="form.title"
+                        label="Judul Note"
+                        variant="outlined"
+                        density="comfortable"
+                        :error-messages="form.errors.title ? [form.errors.title] : []"
+                    />
+                    <v-btn type="submit" :loading="form.processing" color="primary">
+                        Tambah
+                    </v-btn>
                 </div>
-            </template>
+             </v-form>
 
-            <template v-else>
-                {{ n.title }}
-                <button @click="startEdit(n)" style="margin-left: 8px; padding: 4px 8px;">Edit</button>
-                <button @click="remove(n.id)" style="margin-left: 6px; padding: 4px 8px;">Hapus</button>
-            </template>
-            <!-- {{n.title}}
-            <button
-                @click="remove(n.id)"
-                style="margin-left:8px; padding:4px 8px;"
-            >
-                Hapus
-            </button> -->
-        </li>
-    </ul>
-    <!-- bagian pagination -->
-     <div style="margin-top: 16px; display: flex; gap:6px; flex-wrap: wrap;">
-        <button
-            v-for="link in notes.links"
-            :key="link.label"
-            :disabled="!link.url"
-            @click="go(link.url)"
-            v-html="link.label"
-            style="padding: 6px 10px;"
-        ></button>
-     </div>
-</div>
+                <!-- List -->
+                 <v-list lines="one">
+                    <v-list-item v-for="n in notes.data" :key="n.id">
+                        <template #title>
+                            <div v-if="editingId===n.id" class="d-flex ga-2 align-center">
+                                <v-text-field
+                                    v-model="editForm.title"
+                                    label="Edit judul"
+                                    variant="outlined"
+                                    density="comfortable"
+                                    hide-details="auto"
+                                    :error-messages="editForm.errors.title ? [editForm.errors.title] : []"
+                                />
+                                <v-btn
+                                    color="primary"
+                                    :loading="editForm.processing"
+                                    @click="saveEdit(n.id)"
+                                >
+                                    Simpan
+                                </v-btn>
+                                <v-btn variant="tonal" @click="cancelEdit">
+                                    Batal
+                                </v-btn>
+                            </div>
+                            <div v-else class="d-flex justify-space-between align-center">
+                                <div>{{n.title}}</div>
+                                <div class="d-flex ga-2">
+                                    <v-btn size="small" variant="tonal" @click="startEdit(n)">
+                                        Edit
+                                    </v-btn>
+                                    <v-btn size="small" variant="tonal" color="error" @click="remove(n.id)">
+                                        Hapus
+                                    </v-btn>
+
+
+                                </div>
+
+                            </div>
+                        </template>
+
+                    </v-list-item>
+
+                 </v-list>
+                     <!-- bagian pagination -->
+     <Pagination :links="notes.links"/>
+
+
+             
+
+
+
+        </v-card-text>
+    </v-card>
+</v-container>
 </template>
 
 <script setup>
 import {useForm, router} from '@inertiajs/vue3'
 import {ref, watch} from 'vue';
+import Pagination from '@/Components/Pagination.vue';
 
 //untuk mendefinisikan bentuk data
 const props = defineProps({
@@ -85,6 +99,7 @@ const props = defineProps({
     // notes: Array
 })
 
+//variabel untuk simpan query
 const q = ref(props.filters?.q ?? '')
 
 let t = null
@@ -93,7 +108,7 @@ watch(q, (val) => {
     t = setTimeout(() => {
         router.get(
             route('notes.index'),
-            {q: val},
+            {q: val || ''},
             {preserveState: true, replace: true}
         )
     }, 400) //debounce 400ms
@@ -116,6 +131,7 @@ const editForm = useForm({
 //fungsi submit untuk memasukkan data baru
 function submit(){
     form.post(route('notes.store'), {
+        preserveScroll: true,
         onSuccess: () => form.reset('title'),
     })
 }
@@ -123,7 +139,9 @@ function submit(){
 //fungsi untuk menghapus data
 function remove(id){
     if(!confirm('Yakin hapus note ini?')) return
-    form.delete(route('notes.destroy', id))
+    form.delete(route('notes.destroy', id), {
+        preserveScroll: true,
+    })
 }
 
 //fungsi untuk mengedit data
@@ -141,16 +159,17 @@ function cancelEdit(){
 
 //fungsi untuk menyimpan edit
 function saveEdit(id){
-    console.log('saveEdit called', id, editForm.title)
+    //console.log('saveEdit called', id, editForm.title)
     editForm.put(route('notes.update', id), {
+        preserveScroll: true,
         onSuccess: () => cancelEdit(),
-        onError: (e) => console.log('error', e)
+        //onError: (e) => console.log('error', e)
     })
 }
 
-//untuk pagination
-function go(url){
-    if (!url) return
-        router.visit(url, {preserveState: true})
-}
+// //untuk pagination
+// function go(url){
+//     if (!url) return
+//         router.visit(url, {preserveState: true})
+// }
 </script>

@@ -51,15 +51,24 @@ class NoteController extends Controller
 
         Note::create($validated);
 
-        return redirect()->route('notes.index');
+        // return lama
+        // return redirect()->route('notes.index');
+        
+        //return baru
+        return back();
     }
 
     //method untuk delete
     public function destroy(Note $note){
         //jalankan dulu dhapusnya
         $note->delete();
+        
         //terus balik lagi ke halaman index
-        return redirect()->route('notes.index');
+        // return baru
+        //return redirect()->route('notes.index');
+
+        //return baru
+        return back();
     }
 
     // untuk update Note
@@ -70,6 +79,10 @@ class NoteController extends Controller
 
         $note->update($validated);
 
-        return redirect()->route('notes.index');
+        // return lama
+        //return redirect()->route('notes.index');
+
+        //return baru
+        return back();
     }
 }
